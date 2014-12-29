@@ -1,0 +1,2 @@
+first_blood_name="first_app@127.0.0.1"
+first_blood_cookie="first_app"

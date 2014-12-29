@@ -1,0 +1,4 @@
+-mode embedded 
+-name first_app@127.0.0.1 
+-setcookie first_app
+-detached
