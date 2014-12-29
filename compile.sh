@@ -3,7 +3,6 @@
 ##########################      项目相关配置  begin   #############################
 first_blood_root_dir="/home/fuzongqiong/first_blood_project/"
 first_blood_app_name="first_app"
-first_blood_version="60"
 first_blood_lib="kernel stdlib sasl cowboy cowlib emysql ranch "
 first_blood_lib="$first_blood_lib""$first_blood_app_name"
 first_blood_version_list="first_blood_version_list.txt"
@@ -59,7 +58,6 @@ show_version_list()
 generate_consise_project()
 {
 	#传入参数:$1=项目目录
-	#local release_package_name="$first_blood_app_name""_$first_blood_version"
 	local release_package_name=$1
 	local lc_project_dir="$root_dir""first_blood_package/project_package"
 	local lc_concise_dir="$root_dir""first_blood_package/concise_package"
@@ -126,13 +124,14 @@ create_build_dir_struct()
 
 rewrite_reltool_config()
 {
+	local app_vsn=$1
 	local rel_dir="$root_dir""first_blood_build/rel"
 	local first_blood_deps_dir="../$first_blood_app_name/src/deps"
 	local app_lib_dir="../$first_blood_app_name"
 	local app_reltool_name="$root_dir""first_blood_build/rel/reltool.config"
 	local app_src="$root_dir""first_blood_build/$first_blood_app_name/src/$first_blood_app_name.app.src"
 	cd "$root_dir""first_blood_tool"
-	escript rewrite_version_and_reltool.escript "$first_blood_deps_dir" "$first_blood_app_name" "$first_blood_version" "$first_blood_lib" "$app_lib_dir" "$app_reltool_name" "$app_src"
+	escript rewrite_version_and_reltool.escript "$first_blood_deps_dir" "$first_blood_app_name" "$app_vsn" "$first_blood_lib" "$app_lib_dir" "$app_reltool_name" "$app_src"
 }
 
 copy_resource() 
@@ -144,42 +143,8 @@ copy_resource()
 	cp -rf "$root_dir""first_blood_src/resource" "$release_dir"
 }
 
-get_pre_version()
-{
-	cd "$root_dir""first_blood_build"
-	local lc_pre_version=0
-	local project_version_pwd="$root_dir""first_blood_tool/$first_blood_version_list"
-	if [ ! -f "$project_version_pwd" ]; then 
-		echo "没有找到版本列表 $project_version_pwd"
-		exit 1
-	fi 
-	awk -v awk_cur_version="$first_blood_version" -v awk_pre_version="$lc_pre_version" -v exist_cur_version=0 '
-		BEGIN{} 
-		{if(awk_cur_version!=$2) {awk_pre_version=$2;}  
-		else {exist_cur_version=1; exit}
-		} 
-		END {printf(" awk_pre_version=%d\n exist_cur_version=%d\n", awk_pre_version, exist_cur_version)}' "$project_version_pwd" > pre_version.temp_version
-	while read line 
-	do 
-		eval $line
-	done < pre_version.temp_version
-	rm -rf pre_version.temp_version
-	if [ $exist_cur_version -eq 0 ] ; then 
-		echo "没有找到当前版本的数据"
-		exit 1
-	fi 
-	if [ "$awk_pre_version" -eq 0 ]; then 
-		echo "没有找到上一个版本的数据"
-		exit 1
-	fi 
-	
-	return "$awk_pre_version"
-}
-
 generate_upgrade_tar()
 {
-	#get_pre_version
-	#local lc_pre_version=$?
 	local lc_pre_project_name=$1
 	local lc_cur_project_name=$2
 	local lc_release_dir="$root_dir""first_blood_build/rel"
@@ -234,29 +199,34 @@ generate_post()
 	cd "$root_dir""first_blood_build"
 	local start_rel=`cat ./rel/$first_blood_app_name/releases/start_erl.data`
 	local erts_version=${start_rel% *}
+	local app_vsn=${start_rel#* }
 	local erts_bin_dir="$root_dir""first_blood_build/rel/$first_blood_app_name/erts-$erts_version/bin"
 	rm -rf "$erts_bin_dir/erl"
 	cp $root_dir""first_blood_tool/erl $erts_bin_dir
 	chmod +x "$erts_bin_dir/erl"
 	
 	local lc_project_package_dir="$root_dir""first_blood_package/project_package"
-	local lc_app_name_with_version="$first_blood_app_name""_""$first_blood_version"
+	local lc_app_name_with_version="$first_blood_app_name""_""$app_vsn"
 	
 	if [ -d "$lc_project_package_dir/$lc_app_name_with_version" ]; then 
 		cd "$lc_project_package_dir"
-		local lc_cur_time=`date "+%Y_%m_%d_%H_%M_%S"`
-		mv "$lc_app_name_with_version" "$lc_app_name_with_version""_""$lc_cur_time"
+		rm -rf "$lc_app_name_with_version"
 	fi 
 	
 	cd "$root_dir""first_blood_build/rel/$first_blood_app_name"
 	mkdir tool
-	echo "first_blood_version=\"$first_blood_version\"" >./tool/version.txt
+	echo "app_vsn=\"$app_vsn\"" >./tool/version.txt
 	echo "first_blood_app_name=\"$first_blood_app_name\"" >>./tool/version.txt
 	cp "$root_dir""first_blood_tool/vm.args" ./tool
 	cp "$root_dir""first_blood_tool/start.sh" ./tool
 	
 	cd "$root_dir""first_blood_build/rel"
-	mv "$first_blood_app_name" "$lc_project_package_dir/$first_blood_app_name""_""$first_blood_version"	
+	mv "$first_blood_app_name" "$lc_project_package_dir/$first_blood_app_name""_""$app_vsn"	
+	
+	local project_version_pwd="$root_dir""first_blood_tool/$first_blood_version_list"
+	local cur_time=`date "+%Y-%m-%d_%H:%M:%S"`
+	echo "$cur_time $app_vsn" >> "$project_version_pwd"
+	echo "$first_blood_app_name""_""$app_vsn generates ok .........."
 }
 
 
@@ -266,11 +236,6 @@ generate_first_blood_project()
 	rebar compile
 	rebar generate
 	generate_post
-	
-	local project_version_pwd="$root_dir""first_blood_tool/$first_blood_version_list"
-	local cur_time=`date "+%Y-%m-%d_%H:%M:%S"`
-	echo "$cur_time $first_blood_version" >> "$project_version_pwd"
-	echo "$first_blood_app_name""_""$first_blood_version generates ok .........."
 }
 
 clear_build_dir()
@@ -283,21 +248,9 @@ clear_build_dir()
 generate_new_version() 
 {
 	copy_src
-	rewrite_reltool_config
+	rewrite_reltool_config $1 
 	generate_first_blood_project
 }
-
-
-
-rebuild()
-{
-	clear_build_dir
-	create_build_dir_struct
-	copy_src
-	rewrite_reltool_config
-	generate_first_blood_project
-}
-
 
 svn_update()
 {
@@ -311,27 +264,41 @@ svn_update()
 ############   打包  begin ########
 make_full_package()
 {
+	local app_name=$1
 	cd "$root_dir"
 	local lc_project_dir="$root_dir""first_blood_package/project_package"
-	local lc_project_name="$first_blood_app_name""_$first_blood_version"
 	local lc_package_dir="$root_dir""first_blood_package/package"
 	rm -rf "$lc_package_dir/*"
 	cd "$lc_project_dir"
-	tar -zcvf "$lc_package_dir"/"$lc_project_name"".tar.gz" "$lc_project_name"
+	tar -zcvf "$lc_package_dir"/"$app_name"".tar.gz" "$app_name"
 	cd "$lc_package_dir"
-	md5sum "$lc_project_name"".tar.gz" > "$lc_project_name""_Md5".txt
+	md5sum "$app_name"".tar.gz" > "$app_name""_Md5".txt
 }
 
 make_concision_package()
 {
-	echo ""
+	local app_name=$1
+	cd "$root_dir"
+	local lc_project_dir="$root_dir""first_blood_package/concise_package"
+	local lc_package_dir="$root_dir""first_blood_package/package"
+	rm -rf "$lc_package_dir/*"
+	cd "$lc_project_dir"
+	tar -zcvf "$lc_package_dir"/"$app_name"".tar.gz" "$app_name"
+	cd "$lc_package_dir"
+	md5sum "$app_name"".tar.gz" > "$app_name""_Md5".txt
 }
 
 
 
 make_upgrade_package()
 {
-	echo ""
+	local app_name=$1
+	cd "$root_dir"
+	local lc_project_dir="$root_dir""first_blood_package/upgrade_package"
+	local lc_package_dir="$root_dir""first_blood_package/package"
+	rm -rf "$lc_package_dir/*"
+	cd "$lc_package_dir"
+	md5sum "$app_name" > "$app_name""_Md5".txt
 }
 
 
@@ -348,9 +315,7 @@ main()
 		copy_resource)
 			copy_resource;;
 		generate_new_version)
-			generate_new_version;;
-		get_pre_version)
-			get_pre_version;;
+			generate_new_version $2;;
 		generate_upgrade_tar)
 			generate_upgrade_tar $2 $3;;
 		generate_consise_project)
