@@ -24,7 +24,13 @@ if [ "$root_dir" != "$first_blood_root_dir" ]; then
 	echo "请设置构建环境目录:first_blood_root_dir "
 	exit 1
 fi 
- 
+
+###############   文件位置  begin   ####################
+#fd_version_list.txt 在first_blood_tool文件夹下
+version_list="fd_version_list.txt"
+
+###############   文件位置   end    ####################
+
 
 
 #生成测试起始目录
@@ -42,11 +48,26 @@ generate_compile_struct()
 	mkdir upgrade_package project_package concise_package
 }
 
+
+###显示编译过的版本列表
+show_version_list()
+{
+	cd  "$root_dir""first_blood_tool"
+	cat "$version_list"
+}
+
 generate_consise_project()
 {
-	local release_package_name="$first_blood_app_name""_$first_blood_version"
+	#传入参数:$1=项目目录
+	#local release_package_name="$first_blood_app_name""_$first_blood_version"
+	local release_package_name=$1
 	local lc_project_dir="$root_dir""first_blood_package/project_package"
 	local lc_concise_dir="$root_dir""first_blood_package/concise_package"
+	
+	if [ ! -d "$lc_project_dir/release_package_name" ]; then 
+		echo "没找到项目目录,请进行查证"
+		exit 1
+	fi 
 	
 	cd "$lc_concise_dir"
 	if [ -d "$lc_concise_dir/$release_package_name" ]; then 
@@ -272,6 +293,7 @@ rebuild()
 	generate_first_blood_project
 }
 
+
 svn_update()
 {
 	cd "$root_dir"
@@ -327,11 +349,12 @@ main()
 		generate_upgrade_tar)
 			generate_upgrade_tar;;
 		generate_consise_project)
-			generate_consise_project;;
+			generate_consise_project $2;;
 		svn )
 			svn_update;;
 		make_full_package ) make_full_package;;
 		transmit ) transmit;;
+		show_version_list ) show_version_list;;
 		-h)   			 echo '';;
 		*)               echo 'nothing to match,please "-h" for help!';;
 	esac
@@ -342,7 +365,7 @@ main()
 #####################################################
 
 
-main $1
+main $1 $2
 
 
 #####################################################
