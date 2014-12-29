@@ -178,40 +178,45 @@ get_pre_version()
 
 generate_upgrade_tar()
 {
-	get_pre_version
-	local lc_pre_version=$?
-	local lc_pre_project="$root_dir""first_blood_package/project_package/$first_blood_app_name""_""$lc_pre_version"
-	local lc_cur_project="$root_dir""first_blood_package/project_package/$first_blood_app_name""_""$first_blood_version"
+	#get_pre_version
+	#local lc_pre_version=$?
+	local lc_pre_project_name=$1
+	local lc_cur_project_name=$2
 	local lc_release_dir="$root_dir""first_blood_build/rel"
+	
+    lc_pre_project="$root_dir""first_blood_package/project_package/$lc_pre_project_name"
+    lc_cur_project="$root_dir""first_blood_package/project_package/$lc_cur_project_name"
 	
 	#删除rel目录下以前生成的项目
 	if [ -d "$lc_release_dir/$first_blood_app_name" ]; then 
 		rm -rf "$lc_release_dir/$first_blood_app_name"
 	fi 
 	
-	if [ -d "$lc_release_dir/$first_blood_app_name""_""$lc_pre_version" ]; then 
-		rm -rf "$lc_release_dir/$first_blood_app_name""_""$lc_pre_version"
+	if [ -d "$lc_release_dir/$lc_pre_project_name" ]; then 
+		rm -rf "$lc_release_dir/$lc_pre_project_name"
 	fi 
 	
-	cp -rf "$lc_pre_project" "$lc_release_dir/$first_blood_app_name""_""$lc_pre_version"
+	cp -rf "$lc_pre_project" "$lc_release_dir/$lc_pre_project_name"
 	cp -rf "$lc_cur_project" "$lc_release_dir/$first_blood_app_name"
 	
+	local lc_start_erl=`cat $lc_cur_project/releases/start_erl.data`
+	local lc_app_vsn=${lc_start_erl#* }
 	cd "$lc_release_dir"
-	rebar generate-appups previous_release="$first_blood_app_name""_$lc_pre_version"
-	rebar generate-upgrade  previous_release="$first_blood_app_name""_$lc_pre_version"
+	if [ -f "$first_blood_app_name""_$lc_app_vsn.tar.gz" ];then 
+		rm -rf "$first_blood_app_name""_$lc_app_vsn.tar.gz"
+	fi 
+	rebar generate-appups previous_release="$lc_pre_project_name"
+	rebar generate-upgrade  previous_release="$lc_pre_project_name"
 	
 	local lc_upgrade_package="$root_dir""first_blood_package/upgrade_package/"
 	cd "$lc_upgrade_package"
-	if [ -f "$first_blood_app_name""_$first_blood_version.tar.gz" ];then 
-		local lc_cur_time=`date "+%Y_%m_%d_%H_%M_%S"`
-		mv "$first_blood_app_name""_$first_blood_version.tar.gz" "$first_blood_app_name""_$first_blood_version.tar.gz""_$lc_cur_time" 
+	if [ -f "$first_blood_app_name""_$lc_app_vsn.tar.gz" ];then 
+		rm -rf "$first_blood_app_name""_$lc_app_vsn.tar.gz"
 	fi 
 	cd "$lc_release_dir"
-	mv "$first_blood_app_name""_$first_blood_version.tar.gz"  "$root_dir""first_blood_package/upgrade_package"
-	echo "first_blood_version=\"$first_blood_version\"" >"$root_dir""first_blood_package/upgrade_package/version.txt"
-	echo "first_blood_app_name=\"$first_blood_app_name\"" >>"$root_dir""first_blood_package/upgrade_package/version.txt"
-	rm -rf "$lc_release_dir/$first_blood_app_name"
-	rm -rf "$lc_release_dir/$first_blood_app_name""_""$lc_pre_version"
+	mv "$first_blood_app_name""_$lc_app_vsn.tar.gz"  "$root_dir""first_blood_package/upgrade_package"
+	rm -rf "$lc_pre_project_name"
+	rm -rf "$first_blood_app_name"
 }
 
 
@@ -347,7 +352,7 @@ main()
 		get_pre_version)
 			get_pre_version;;
 		generate_upgrade_tar)
-			generate_upgrade_tar;;
+			generate_upgrade_tar $2 $3;;
 		generate_consise_project)
 			generate_consise_project $2;;
 		svn )
@@ -365,7 +370,7 @@ main()
 #####################################################
 
 
-main $1 $2
+main $1 $2 $3
 
 
 #####################################################
