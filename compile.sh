@@ -57,6 +57,10 @@ show_version_list()
 
 generate_consise_project()
 {
+	if [ ! $# -eq 1 ]; then 
+		echo "缺少参数"
+		exit 1
+	fi 
 	#传入参数:$1=项目目录
 	local release_package_name=$1
 	local lc_project_dir="$root_dir""first_blood_package/project_package"
@@ -111,13 +115,20 @@ copy_src()
 create_build_dir_struct()
 {
 	cd "$root_dir""first_blood_build"
-	mkdir "$first_blood_app_name"
-	mkdir rel
+	if [ ! -d "$first_blood_app_name" ]; then
+		mkdir "$first_blood_app_name"
+	fi 
+	if [ ! -d rel ]; then
+		mkdir rel
+	fi 
 	
 	cd "$first_blood_app_name"
-	mkdir src
+	if [ ! -d src ]; then
+		mkdir src
+	fi 
 	
 	cd "$root_dir""first_blood_build/rel"
+	rm -rf *
 	rebar create-node nodeid="$first_blood_app_name"
 	generate_rebar_config
 }
@@ -145,6 +156,10 @@ copy_resource()
 
 generate_upgrade_tar()
 {
+	if [ ! $# -eq 2 ]; then 
+		echo "缺少参数"
+		exit 1
+	fi 
 	local lc_pre_project_name=$1
 	local lc_cur_project_name=$2
 	local lc_release_dir="$root_dir""first_blood_build/rel"
@@ -247,6 +262,10 @@ clear_build_dir()
 
 generate_new_version() 
 {
+	if [ ! $# -eq 1 ]; then 
+		echo "缺少参数"
+		exit 1
+	fi 
 	copy_src
 	rewrite_reltool_config $1 
 	generate_first_blood_project
@@ -301,6 +320,14 @@ make_upgrade_package()
 	md5sum "$app_name" > "$app_name""_Md5".txt
 }
 
+make_update()
+{
+	local lc_app_vsn=$1
+	local lc_app_name="$first_blood_app_name""_$lc_app_vsn"
+	generate_new_version "$lc_app_vsn"
+	make_full_package "$lc_app_name"
+}
+
 
 ############   打包  end ########
 main() 
@@ -323,6 +350,7 @@ main()
 		svn )
 			svn_update;;
 		make_full_package ) make_full_package;;
+		make_update ) make_update $2;;
 		transmit ) transmit;;
 		show_version_list ) show_version_list;;
 		-h)   			 echo '';;
