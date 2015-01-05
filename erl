@@ -36,9 +36,11 @@ BINDIR=$ROOTDIR/erts-$ERTS_VSN/bin
 EMU=beam
 PROGNAME=`echo $0 | sed 's/.*\\///'`
 CMD="$BINDIR/erlexec"
+HOME="/root"
 export EMU
 export ROOTDIR
 export BINDIR
 export PROGNAME
+export HOME
 
 exec $CMD ${1+"$@"}
