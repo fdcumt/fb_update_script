@@ -106,6 +106,8 @@ generate_rebar_config()
 
 copy_src() 
 {
+	cd "$root_dir""first_blood_build/$first_blood_app_name/src"
+	rm -rf *
 	cd "$root_dir"
 	cp -rf ./first_blood_src/src/* "./first_blood_build/$first_blood_app_name/src/"
 	pre_clean
@@ -273,9 +275,10 @@ generate_new_version()
 
 svn_update()
 {
-	cd "$root_dir"
+	cd "$root_dir""first_blood_src/src"
 	svn update "$root_dir""first_blood_src/src"
 	echo " server update ok............"
+	cd "$root_dir""first_blood_src/resource"
 	svn update "$root_dir""first_blood_src/resource"
 	echo " resource update ok............"
 }
