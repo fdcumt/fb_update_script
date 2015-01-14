@@ -268,6 +268,11 @@ generate_new_version()
 		echo "缺少参数"
 		exit 1
 	fi 
+	local result=`echo "$1"  |sed -n '/^[0-9]\+\(\(\.[0-9]\+\)*\)$/p' | wc -l`
+	if [ ! $result -eq 1 ]; then 
+		echo "版本号不符合标准:标准为数字.数字一类"
+		exit 1
+	fi 
 	copy_src
 	rewrite_reltool_config $1 
 	generate_first_blood_project
