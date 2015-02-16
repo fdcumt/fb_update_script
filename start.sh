@@ -7,6 +7,7 @@ project_name=${root_dir##*/}
 project_start_erl=`cat $root_dir/releases/start_erl.data`
 project_erts_vsn=${project_start_erl% *}
 cur_app_vsn=${project_start_erl#* }
+erl_cal_path="/usr/local/erl/lib/erlang/lib/erl_interface-3.7.18/bin/erl_call"
 #启动时间超级长,至少是5秒,反正我测试的时候5秒没启动成功
 start_wait_time="20"
 
@@ -65,6 +66,12 @@ get_status()
 	fi 
 }
 
+test_stop() 
+{
+    #关闭服务器中的gen_server
+    sed -i '3s/^.*$/%%! -smp enable -name '"temp_""$first_blood_name"'/' rpc.escript 
+    escript rpc.escript "$first_blood_name" "$first_blood_cookie"
+}
 
  
 start_server()
@@ -107,6 +114,11 @@ start_server()
 	done
 	echo "$project_name start timeout ......"
 	exit 1
+}
+
+test_call() 
+{
+	"$erl_cal_path" -name "$first_blood_name" -c "$first_blood_cookie" -a 'gate_app window_start []'
 }
 
 pre_clean()
@@ -166,7 +178,6 @@ install_upgrade()
 	echo "upgrade_package ok ............"
 	
 }
-
 stop()
 {
 	local smp_pid=`ps axu | grep -w $root_dir | grep -v "grep" | grep -w "beam.smp"`
@@ -174,8 +185,17 @@ stop()
 		echo "$project_name is not start ....."
 		exit 0
 	fi 
-	#/usr/local/erl/lib/erlang/lib/erl_interface-3.7.18/bin/erl_call -name "$first_blood_name" -c "$first_blood_cookie" -a 'gate_app test []'
-	#while [ $count -lt $WAIT_COUNT ]
+    
+    
+	#"$erl_cal_path" -name "$first_blood_name" -c "$first_blood_cookie" -a 'kick_manager stop_server []'
+    #关闭服务器中的gen_server
+    cd "$root_dir"
+    
+    sed -i '3s/^.*$/%%! -smp enable -name '"rpc_""$first_blood_name"'/' ./tool/rpc.escript 
+    ./erts-6.2/bin/escript ./tool/rpc.escript  "$first_blood_name" "$first_blood_cookie" stop_server
+	#local count=0
+	#local wait_times=5
+	#while [ $count -lt $start_wait_time ]
 	#do
 	#	local pid=`ps axu | grep -w $root_dir | grep -v "grep"`
 	#	if [ "$pid" == "" ]
@@ -187,7 +207,7 @@ stop()
 	#	sleep 1 
 	#	let "count = count + 1"	
 	#done
-	#现在直接杀死
+	#然后直接杀死
 	local smp_pid=`ps axu | grep -w $root_dir | grep -v "grep" | grep -w "beam.smp" | awk -F " " '{ print $2 }'`
 	kill "$smp_pid"
 	echo "$project_name has killed ......"
@@ -202,12 +222,10 @@ start_test()
  
  show_version()
  {
-	/usr/local/erl/lib/erlang/lib/erl_interface-3.7.17/bin/erl_call -name "$first_blood_name" -c "$first_blood_cookie" -a 'application which_applications []' > .app_version.txt
-	sed -i 's/^/  /g ' .app_version.txt
-	sed -i 's/},/}, \n  /g ' .app_version.txt
-	cat .app_version.txt 
-	echo ""
-	rm -rf .app_version.txt
+	cd "$root_dir"
+    sed -i '3s/^.*$/%%! -smp enable -name '"temp_""$first_blood_name"'/' ./tool/rpc.escript 
+    ./erts-6.2/bin/escript ./tool/rpc.escript  "$first_blood_name" "$first_blood_cookie" show_version
+
  }
  
  
@@ -224,6 +242,10 @@ main()
 			start_server;;
 		stop) 
 			stop;;
+		test_call) 
+			test_call;;
+		test_stop) 
+            test_stop;;
 		install_upgrade) 
 			install_upgrade $2;;
 		generate_new_version_project)
@@ -231,7 +253,7 @@ main()
 		start_test)
 			start_test;;
 		attach) attach;;
-		show_version) show_version;;
+		version) show_version;;
 		get_status)   get_status;;
 		show_status)  show_status;;
 	esac
