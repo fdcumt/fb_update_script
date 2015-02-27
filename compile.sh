@@ -13,7 +13,6 @@ app_lib="$app_lib ""$app_name"
 cur_dir="$(dirname `readlink -f "$0"`)"  
 cur_dir=${cur_dir%/*}
 
-echo $cur_dir
 #检测目录设置是否正确
 if [ $root_dir != $cur_dir ]; then
     echo "please set root dir"
@@ -25,15 +24,11 @@ fi
 generate_src_dir() 
 {
 	cd "$root_dir"
-	if [ -d src ]; then 
-		rm -rf src 
-	fi 
-	
+	rm -rf src 
 	mkdir src 
 	svn co http://192.168.100.120/svn_firstblood3d/resource/trunk ./src/resource
 	svn co http://192.168.100.120/svn_firstblood3d/program/trunk/server ./src/server
 }
-
 
 #更新源码
 update_src() 
@@ -47,9 +42,7 @@ update_src()
 generate_compile_dir() 
 {
 	cd "$root_dir"
-	if [ -d compile ]; then 
-		rm -rf compile 
-	fi 
+	rm -rf compile 
 	
 	mkdir -p ./compile/$app_name/src
 	mkdir -p ./compile/rel
@@ -73,13 +66,32 @@ generate_release_dir()
 	fi 
 }
 
+#生成停服更新release版目录
+generate_simplify_release_dir()
+{
+	cd "$root_dir"
+	if [ ! -d simplify_release ]; then 
+		mkdir simplify_release
+	fi 
+}
+
+#生成热更新release版目录
+generate_hot_release_dir()
+{
+	cd "$root_dir"
+	if [ ! -d hot_release ]; then 
+		mkdir hot_release
+	fi 
+}
+
 #编译前清理
 compile_pre_clean() 
 {
     cd "$root_dir"
     cd ./compile/$app_name/src
 	mv  ./top_start/* .
-    
+    rm -rf $root_dir/compile/rel/$app_name
+
     #删除依赖项目中的源码,src目录
     local deps_dir_list=`ls $root_dir/compile/$app_name/src/deps`
     cd $root_dir/compile/$app_name/src/deps
@@ -94,18 +106,18 @@ compile_pre_clean()
 #编译后设置
 compile_post_clean() 
 {
-    local lc_release_dir="$root_dir/compile/rel/$app_name"
-    cp -rf "$root_dir/src/resource" "$lc_release_dir/"
-    cp -rf "$root_dir/src/server/config" "$lc_release_dir/"
-    mkdir -p "$lc_release_dir/game_log" "$lc_release_dir/record" "$lc_release_dir/tool"
+    cd $root_dir/compile/rel/$app_name
+    cp -rft . $root_dir/src/resource $root_dir/src/server/config
+    mkdir game_log record tool
     
     local start_rel=`cat $root_dir/compile/rel/$app_name/releases/start_erl.data`
 	local erts_version=${start_rel% *}
 	local app_vsn=${start_rel#* }
-    cp -rf "$root_dir/tool/vm.args"  "$root_dir/compile/rel/$app_name/tool"
-    cp -rf "$root_dir/tool/start.sh" "$root_dir/compile/rel/$app_name/tool"
+    cp -rft $root_dir/compile/rel/$app_name/tool  $root_dir/tool/vm.args $root_dir/tool/start.sh $root_dir/tool/rpc.escript
     cp -rf "$root_dir/tool/erl" "$root_dir/compile/rel/$app_name/erts-$erts_version/bin/erl"
     chmod +x "$root_dir/compile/rel/$app_name/erts-$erts_version/bin/erl"
+    rm -rf $root_dir/release/$app_name"_$app_vsn"
+    mv $root_dir/compile/rel/$app_name $root_dir/release/$app_name"_$app_vsn"
 }
 
 #生成rebar.config
@@ -136,11 +148,7 @@ generate_reltool_config()
 copy_src_to_compile() 
 {
 	cd "$root_dir"
-	rm -rf ./compile/$app_name/src/*
-	if [ -d ./compile/$app_name/ebin ]; then 
-		rm -rf ./compile/$app_name/ebin
-	fi 
-	
+	rm -rf ./compile/$app_name/src/* ./compile/$app_name/ebin
 	cp -rf ./src/server/* ./compile/$app_name/src/
     compile_pre_clean
 }
@@ -151,9 +159,9 @@ generate_project_structure()
     generate_compile_dir
     generate_src_dir
     generate_release_dir
+    generate_simplify_release_dir
+    generate_hot_release_dir
 }
-
-
 
 #生成新版本
 generate_new_version() 
@@ -171,6 +179,48 @@ generate_new_version()
     compile_post_clean
 }
 
+#生成停服更新版本
+generate_simplify_release() 
+{
+    if [ ! $# -eq 1 ]; then 
+		echo "please set version number"
+		exit 1
+	fi
+    local app_vsn=$1
+    generate_new_version $1
+    cp -rf $root_dir/release/$app_name"_$app_vsn" $root_dir/simplify_release/$app_name"_$app_vsn"
+    cd $root_dir/simplify_release/$app_name"_$app_vsn"
+    rm -rf config game_log log record  tool
+}
+
+#生成热更新版本
+generate_hot_release() 
+{
+    if [ ! $# -eq 2 ]; then 
+        echo "please input the right arguments"
+        exit 1
+    fi
+    local pre_vsn=$1
+    local cur_vsn=$2
+    cd $root_dir/compile/rel
+    rm -rf $app_name $pre_vsn $cur_vsn
+    cp -rft $root_dir/compile/rel $root_dir/release/$cur_vsn $root_dir/release/$pre_vsn
+    mv $cur_vsn $app_name
+    local start_rel=`cat $root_dir/compile/rel/$app_name/releases/start_erl.data`
+	local app_vsn=${start_rel#* }
+    generate_reltool_config $app_vsn
+    cd $root_dir/compile/rel
+    rebar generate-appups   previous_release="$pre_vsn"
+	rebar generate-upgrade  previous_release="$pre_vsn"
+    rm -rf $pre_vsn $app_vsn
+    mv $cur_vsn.tar.gz $root_dir/hot_release
+}
+
+show_version_list()
+{
+    ls $root_dir/release
+}
+
 
 main() 
 {
@@ -185,6 +235,10 @@ main()
 			generate_compile_dir;;
 		generate_src_dir) 
             generate_src_dir;;
+        generate_hot_release)
+            generate_hot_release $2 $3;;
+        generate_simplify_release)
+            generate_simplify_release $2;;
         generate_new_version)
             generate_new_version $2;;
         copy_src_to_compile)
@@ -193,12 +247,14 @@ main()
 			generate_release_dir ;;
         generate_rebar_config)
             generate_rebar_config;;
+        show_version_list)
+            show_version_list;;
         generate_reltool_config)
             generate_reltool_config $2;;
 	esac
 } 
 
 
-main $1 $2 $3 $4 $5
+main $1 $2 $3
 
 
