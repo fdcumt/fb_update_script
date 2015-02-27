@@ -7,34 +7,25 @@ project_name=${root_dir##*/}
 project_start_erl=`cat $root_dir/releases/start_erl.data`
 project_erts_vsn=${project_start_erl% *}
 cur_app_vsn=${project_start_erl#* }
+app_name="first_app"
 erl_cal_path="/usr/local/erl/lib/erlang/lib/erl_interface-3.7.18/bin/erl_call"
 #启动时间超级长,至少是5秒,反正我测试的时候5秒没启动成功
-start_wait_time="20"
+start_wait_time="8"
 
 cd "$root_dir""/tool"
-awk -F ' ' '
-	BEGIN {  }
-	{ 
-	  if($1=="-name")  { print 	"first_blood_name=\""$2"\"" ;} 
-	  else if($1=="-setcookie") { print "first_blood_cookie=\""$2"\"" ;}
-	}
-	END {} ' vm.args >VAR.TXT
+awk -F ' ' 'BEGIN  { 
+	  if($1=="-name")  { print 	"node_name=\""$2"\"" ;} 
+	  else if($1=="-setcookie") { print "node_cookie=\""$2"\"" ;}
+	} END ' vm.args >VAR.TXT
 	
-#first_blood_name="first_app@127.0.0.1"
-#first_blood_cookie="first_app"
+#node_name="first_app@127.0.0.1"
+#node_cookie="first_app"
 while read line 
 do 
 	eval $line
 done < VAR.TXT
 
 rm -rf VAR.TXT
-
-#first_blood_app_name="first_app"
-#first_blood_version="22"
-while read line 
-do 
-	eval $line
-done < version.txt
 
 status()
 {
@@ -50,9 +41,9 @@ show_status()
 {
 	status
 	if [ $? -eq 0 ]; then
-		echo "$first_blood_app_name is running........."
+		echo "$app_name is running........."
 	else 
-		echo "$first_blood_app_name is not running........."
+		echo "$app_name is not running........."
 	fi 
 }
 
@@ -69,14 +60,13 @@ get_status()
 test_stop() 
 {
     #关闭服务器中的gen_server
-    sed -i '3s/^.*$/%%! -smp enable -name '"temp_""$first_blood_name"'/' rpc.escript 
-    escript rpc.escript "$first_blood_name" "$first_blood_cookie"
+    sed -i '3s/^.*$/%%! -smp enable -name '"temp_""$node_name"'/' rpc.escript 
+    escript rpc.escript "$node_name" "$node_cookie"
 }
 
  
 start_server()
 {
-	
 	local smp_pid=`ps axu | grep -w $root_dir | grep -v "grep" | grep -w "beam.smp"`
 	local erlexec_pid=`ps axu | grep -w $root_dir | grep -v "grep" | grep -w "erlexec"`
 	local server_status=""
@@ -93,7 +83,7 @@ start_server()
 	fi 
 	
 	cd "$root_dir"
-    (nohup ./erts-"$project_erts_vsn"/bin/erl -args_file ./tool/vm.args -boot ./releases/"$cur_app_vsn"/"$first_blood_app_name"  >./game_log/nohup.out	2>&1 )&
+    (nohup ./erts-"$project_erts_vsn"/bin/erl -args_file ./tool/vm.args -boot ./releases/"$cur_app_vsn"/"$app_name"  >./game_log/nohup.out	2>&1 )&
 	
 	local count=0
 	while [ $count -lt $start_wait_time ]
@@ -118,7 +108,7 @@ start_server()
 
 test_call() 
 {
-	"$erl_cal_path" -name "$first_blood_name" -c "$first_blood_cookie" -a 'gate_app window_start []'
+	"$erl_cal_path" -name "$node_name" -c "$node_cookie" -a 'gate_app window_start []'
 }
 
 pre_clean()
@@ -150,16 +140,16 @@ install_upgrade()
 	local app_vsn=${release_package##*_} 
 	app_vsn=${app_vsn%.*}
 	app_vsn=${app_vsn%.*}
-	local release_package_name="$first_blood_app_name""_$app_vsn"
+	local release_package_name="$app_name""_$app_vsn"
 	/bin/cp ../first_blood_package/upgrade_package/"$release_package" ./releases/
-	/usr/local/erl/lib/erlang/lib/erl_interface-3.7.17/bin/erl_call -name "$first_blood_name" -c "$first_blood_cookie" -a 'release_handler unpack_release ["'"$release_package_name"'"]' |tee .unpack_release
+	/usr/local/erl/lib/erlang/lib/erl_interface-3.7.17/bin/erl_call -name "$node_name" -c "$node_cookie" -a 'release_handler unpack_release ["'"$release_package_name"'"]' |tee .unpack_release
 	content_error=`cat .unpack_release |grep "error" |wc -l`
 	cat .unpack_release
 	if [ ! "$content_error" -eq 0 ]; then 
 		rm -rf .unpack_release
 		exit 1
 	fi 
-	/usr/local/erl/lib/erlang/lib/erl_interface-3.7.17/bin/erl_call -name "$first_blood_name" -c "$first_blood_cookie" -a 'release_handler install_release ["'"$app_vsn"'"]' | tee .unpack_release
+	/usr/local/erl/lib/erlang/lib/erl_interface-3.7.17/bin/erl_call -name "$node_name" -c "$node_cookie" -a 'release_handler install_release ["'"$app_vsn"'"]' | tee .unpack_release
 	content_error=`cat .unpack_release |grep "error" |wc -l`
 	cat .unpack_release
 	if [ ! "$content_error" -eq 0 ]; then 
@@ -167,7 +157,7 @@ install_upgrade()
 		exit 1
 	fi 
 	
-	/usr/local/erl/lib/erlang/lib/erl_interface-3.7.17/bin/erl_call -name "$first_blood_name" -c "$first_blood_cookie" -a 'release_handler make_permanent ["'"$app_vsn"'"]' | tee .unpack_release
+	/usr/local/erl/lib/erlang/lib/erl_interface-3.7.17/bin/erl_call -name "$node_name" -c "$node_cookie" -a 'release_handler make_permanent ["'"$app_vsn"'"]' | tee .unpack_release
 	content_error=`cat .unpack_release |grep "error" |wc -l`
 	cat .unpack_release
 	if [ ! "$content_error" -eq 0 ]; then 
@@ -187,12 +177,12 @@ stop()
 	fi 
     
     
-	#"$erl_cal_path" -name "$first_blood_name" -c "$first_blood_cookie" -a 'kick_manager stop_server []'
+	#"$erl_cal_path" -name "$node_name" -c "$node_cookie" -a 'kick_manager stop_server []'
     #关闭服务器中的gen_server
     cd "$root_dir"
     
-    sed -i '3s/^.*$/%%! -smp enable -name '"rpc_""$first_blood_name"'/' ./tool/rpc.escript 
-    ./erts-6.2/bin/escript ./tool/rpc.escript  "$first_blood_name" "$first_blood_cookie" stop_server
+    sed -i '3s/^.*$/%%! -smp enable -name '"rpc_""$node_name"'/' ./tool/rpc.escript 
+    ./erts-6.2/bin/escript ./tool/rpc.escript  "$node_name" "$node_cookie" stop_server
 	#local count=0
 	#local wait_times=5
 	#while [ $count -lt $start_wait_time ]
@@ -216,15 +206,15 @@ stop()
 start_test()
 {
 	cd "$root_dir"
-	./erts-"$project_erts_vsn"/bin/erl -args_file ./tool/vm.args -boot ./releases/"$cur_app_vsn"/"$first_blood_app_name" 
+	./erts-"$project_erts_vsn"/bin/erl -args_file ./tool/vm.args -boot ./releases/"$cur_app_vsn"/"$app_name" 
 }
  
  
  show_version()
  {
 	cd "$root_dir"
-    sed -i '3s/^.*$/%%! -smp enable -name '"temp_""$first_blood_name"'/' ./tool/rpc.escript 
-    ./erts-6.2/bin/escript ./tool/rpc.escript  "$first_blood_name" "$first_blood_cookie" show_version
+    sed -i '3s/^.*$/%%! -smp enable -name '"temp_""$node_name"'/' ./tool/rpc.escript 
+    ./erts-6.2/bin/escript ./tool/rpc.escript  "$node_name" "$node_cookie" show_version
 
  }
  
@@ -232,7 +222,7 @@ start_test()
 attach()
 {
 	cd "$root_dir"
-	erl -setcookie "$first_blood_cookie" -name "attach_""$first_blood_name" -remsh "$first_blood_name"
+	erl -setcookie "$node_cookie" -name "attach_""$node_name" -remsh "$node_name"
 }
 
 main() 
