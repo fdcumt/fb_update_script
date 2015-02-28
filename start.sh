@@ -118,10 +118,11 @@ install_simplify_release()
 
 install_upgrade() 
 {
-	cd "$root_dir"
-	local release_package=$1
+    local package_full_path=$1
+	local release_package=${package_full_path##*/}
 	local upgrade_app_name=${release_package%.tar.gz}
 	local upgarde_app_vsn=${upgrade_app_name##*_}
+    cp -rf $package_full_path $root_dir/releases
 	rpc_call upgrade $upgrade_app_name $upgarde_app_vsn
 }
 stop()
