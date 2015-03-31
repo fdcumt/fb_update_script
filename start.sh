@@ -15,18 +15,17 @@ erts_name="erts-$erts_vsn"
 start_wait_time="8"
 
 cd $root_dir/tool
-awk -F ' ' '{ 
-	if($1=="-name")  { print 	"node_name=\""$2"\"" ;} 
-	else if($1=="-setcookie") { print "node_cookie=\""$2"\"" ;}
-}' vm.args >var.txt
-	
-#node_name="first_app@127.0.0.1"
-#node_cookie="first_app"
-while read line 
-do 
-	eval $line
-done < var.txt
-rm -rf var.txt
+while read line
+do
+	arg=`echo $line | awk -F ' ' '{print $1}'`
+	value=`echo $line |awk -F ' ' '{print $2}'`
+	echo $line
+	if [ "$arg" == "-name" ]; then 
+		node_name=$value
+	elif [ "$arg" == "-setcookie" ]; then 
+		node_cookie=$value
+	fi 
+done < vm.args
 
 status()
 {
