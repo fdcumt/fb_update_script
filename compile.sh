@@ -8,6 +8,7 @@ app_name="first_app"
 #项目依赖项
 app_lib="kernel stdlib sasl cowboy cowlib emysql ranch logserver"
 app_lib="$app_lib ""$app_name"
+share_dir="/home/fuzongqiong/client_3d_share"
 
 #当前目录
 cur_dir="$(dirname `readlink -f "$0"`)"  
@@ -221,6 +222,31 @@ show_version_list()
     ls $root_dir/release
 }
 
+make_release_share() 
+{
+    local lc_tar_project=$1
+    rm -rf $share_dir/release/$lc_tar_project.tar.gz 
+    rm -rf $root_dir/release/$lc_tar_project.tar.gz
+    cd $root_dir/release/$lc_tar_project 
+    tar -zcvf $lc_tar_project.tar.gz * > /dev/null
+    mv $root_dir/release/$lc_tar_project/$lc_tar_project.tar.gz $share_dir/release/$lc_tar_project.tar.gz  
+}
+
+make_simplify_release_share() 
+{
+    local lc_tar_project=$1
+    rm -rf $share_dir/simplify_release/$lc_tar_project.tar.gz 
+    rm -rf $root_dir/simplify_release/$lc_tar_project.tar.gz
+    cd $root_dir/simplify_release/$lc_tar_project 
+    tar -zcvf $lc_tar_project.tar.gz * > /dev/null
+    mv $root_dir/simplify_release/$lc_tar_project/$lc_tar_project.tar.gz $share_dir/simplify_release/$lc_tar_project.tar.gz  
+}
+
+make_hot_release_share() 
+{
+    local lc_tar_project=$1
+    mv $root_dir/hot_release/$lc_tar_project $share_dir/hot_release/$lc_tar_project
+}
 
 main() 
 {
@@ -249,8 +275,14 @@ main()
             generate_rebar_config;;
         show_version_list)
             show_version_list;;
+        make_release_share)
+            make_release_share $2 $3;;
         generate_reltool_config)
             generate_reltool_config $2;;
+        make_simplify_release_share)
+            make_simplify_release_share $2;;
+        make_hot_release_share)
+            make_hot_release_share $2;;
 	esac
 } 
 
