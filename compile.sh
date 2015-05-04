@@ -1,27 +1,43 @@
 #!/bin/sh
 
-#æ ¹ç›®å½•
+#¸ùÄ¿Â¼
 root_dir="/home/fuzongqiong/new_test"
 
-#é¡¹ç›®åç§°
+#ÏîÄ¿Ãû³Æ
 app_name="first_app"
-#é¡¹ç›®ä¾èµ–é¡¹
+#ÏîÄ¿ÒÀÀµÏî
 app_lib="kernel stdlib sasl cowboy cowlib emysql ranch logserver"
 app_lib="$app_lib ""$app_name"
-share_dir="/home/fuzongqiong/client_3d_share"
+share_dir="/home/fuzongqiong/client_3d_share/share/"
+zdb_dir="/home/fuzongqiong/new_test/src/resource/zdb"
 
-#å½“å‰ç›®å½•
+#µ±Ç°Ä¿Â¼
 cur_dir="$(dirname `readlink -f "$0"`)"  
 cur_dir=${cur_dir%/*}
 
-#æ£€æµ‹ç›®å½•è®¾ç½®æ˜¯å¦æ­£ç¡®
+#¼ì²âÄ¿Â¼ÉèÖÃÊÇ·ñÕýÈ·
 if [ $root_dir != $cur_dir ]; then
     echo "please set root dir"
     exit 1
 fi 
 
+#°æ±¾ºÅ²½³¤
+step_size=0.1
+#Éú³É°æ±¾ºÅÁÐ±í
+if [ ! -f $root_dir/tool/version.txt ]; then 
+    echo "1.0" > $root_dir/tool/version.txt
+fi
+# ÈÝ´í
+app_version=`cat version.txt `
+if [ "$app_version" = "" ]; then 
+    echo "1.0" >$root_dir/tool/version.txt
+fi 
 
-#ç”Ÿæˆæºç ç›®å½•
+# µ±Ç°°æ±¾ºÅ
+app_version=`cat $root_dir/tool/version.txt `
+
+
+#Éú³ÉÔ´ÂëÄ¿Â¼
 generate_src_dir() 
 {
 	cd "$root_dir"
@@ -31,7 +47,7 @@ generate_src_dir()
 	svn co http://192.168.100.120/svn_firstblood3d/program/trunk/server ./src/server
 }
 
-#æ›´æ–°æºç 
+#¸üÐÂÔ´Âë
 update_src() 
 {
 	cd "$root_dir/src"
@@ -39,7 +55,7 @@ update_src()
 	svn update server
 }
 
-#ç”Ÿæˆç¼–è¯‘ç›®å½•ç»“æž„
+#Éú³É±àÒëÄ¿Â¼½á¹¹
 generate_compile_dir() 
 {
 	cd "$root_dir"
@@ -52,13 +68,13 @@ generate_compile_dir()
 	rebar create-node nodeid="$app_name"
 }
 
-#æ¸…ç†ç¼–è¯‘ç›®å½•
+#ÇåÀí±àÒëÄ¿Â¼
 clean_compile_dir() 
 {
     generate_compile_dir
 }
 
-#ç”Ÿæˆreleaseç›®å½•
+#Éú³ÉreleaseÄ¿Â¼
 generate_release_dir()
 {
 	cd "$root_dir"
@@ -67,7 +83,7 @@ generate_release_dir()
 	fi 
 }
 
-#ç”Ÿæˆåœæœæ›´æ–°releaseç‰ˆç›®å½•
+#Éú³ÉÍ£·þ¸üÐÂrelease°æÄ¿Â¼
 generate_simplify_release_dir()
 {
 	cd "$root_dir"
@@ -76,7 +92,7 @@ generate_simplify_release_dir()
 	fi 
 }
 
-#ç”Ÿæˆçƒ­æ›´æ–°releaseç‰ˆç›®å½•
+#Éú³ÉÈÈ¸üÐÂrelease°æÄ¿Â¼
 generate_hot_release_dir()
 {
 	cd "$root_dir"
@@ -85,7 +101,7 @@ generate_hot_release_dir()
 	fi 
 }
 
-#ç¼–è¯‘å‰æ¸…ç†
+#±àÒëÇ°ÇåÀí
 compile_pre_clean() 
 {
     cd "$root_dir"
@@ -93,7 +109,7 @@ compile_pre_clean()
 	mv  ./top_start/* .
     rm -rf $root_dir/compile/rel/$app_name
 
-    #åˆ é™¤ä¾èµ–é¡¹ç›®ä¸­çš„æºç ,srcç›®å½•
+    #É¾³ýÒÀÀµÏîÄ¿ÖÐµÄÔ´Âë,srcÄ¿Â¼
     local deps_dir_list=`ls $root_dir/compile/$app_name/src/deps`
     cd $root_dir/compile/$app_name/src/deps
     for dir in $deps_dir_list 
@@ -104,7 +120,7 @@ compile_pre_clean()
     done
 }
 
-#ç¼–è¯‘åŽè®¾ç½®
+#±àÒëºóÉèÖÃ
 compile_post_clean() 
 {
     cd $root_dir/compile/rel/$app_name
@@ -114,25 +130,30 @@ compile_post_clean()
     local start_rel=`cat $root_dir/compile/rel/$app_name/releases/start_erl.data`
 	local erts_version=${start_rel% *}
 	local app_vsn=${start_rel#* }
-    cp -rft $root_dir/compile/rel/$app_name/tool  $root_dir/tool/vm.args $root_dir/tool/start.sh $root_dir/tool/rpc.escript
+    cp -rft $root_dir/compile/rel/$app_name/tool  $root_dir/tool/vm.args $root_dir/tool/start.sh $root_dir/tool/rpc.escript 
+	cp -rft $root_dir/compile/rel/$app_name/bin/  /usr/local/erl/lib/erlang/bin/start.boot
     cp -rf "$root_dir/tool/erl" "$root_dir/compile/rel/$app_name/erts-$erts_version/bin/erl"
     chmod +x "$root_dir/compile/rel/$app_name/erts-$erts_version/bin/erl"
+    cd $root_dir/compile/rel/$app_name
+    find . -name ".*" |grep -v "^.$" | xargs rm -rf
     rm -rf $root_dir/release/$app_name"_$app_vsn"
     mv $root_dir/compile/rel/$app_name $root_dir/release/$app_name"_$app_vsn"
 }
 
-#ç”Ÿæˆrebar.config
+#Éú³Érebar.config
 generate_rebar_config()
 {
 	cd "$root_dir/compile"
-	local rebar_sub_dirs="{sub_dirs, [\"$app_name\",\"rel\"]}."
-	local rebar_clean="{clean_files, [\"$app_name/ebin\"]}."
+	local rebar_sub_dirs='{sub_dirs, ["'"$app_name"'","rel"]}.'
+	local rebar_clean='{clean_files, ["'"$app_name"'/ebin"]}.'
+	local rebar_def="{erl_opts, [{d,'RELEASE',already_def}]}. "
 	cat /dev/null >rebar.config
 	echo "$rebar_sub_dirs" >> rebar.config
 	echo "$rebar_clean"    >> rebar.config
+	echo "$rebar_def"    >> rebar.config
 }
 
-#ç”Ÿæˆreltool.configå¹¶ä¸”ä¿®æ”¹first_app.app.srcçš„ç‰ˆæœ¬å·
+#Éú³Éreltool.config²¢ÇÒÐÞ¸Äfirst_app.app.srcµÄ°æ±¾ºÅ
 generate_reltool_config()
 {
     local app_svn=$1
@@ -145,7 +166,7 @@ generate_reltool_config()
     escript generate_reltool_config.escript "$dep_dir" "$app_name" "$app_svn" "$app_lib" "$lib_dir" "$reltool_config_name" "$app_src_name"
 }
 
-#å°†æºç æ‹·è´åˆ°ç¼–è¯‘ç›®å½•
+#½«Ô´Âë¿½±´µ½±àÒëÄ¿Â¼
 copy_src_to_compile() 
 {
 	cd "$root_dir"
@@ -154,7 +175,7 @@ copy_src_to_compile()
     compile_pre_clean
 }
 
-#ç”Ÿæˆç›®å½•ç»“æž„
+#Éú³ÉÄ¿Â¼½á¹¹
 generate_project_structure()
 {
     generate_compile_dir
@@ -164,37 +185,23 @@ generate_project_structure()
     generate_hot_release_dir
 }
 
-#ç”Ÿæˆæ–°ç‰ˆæœ¬
+#Éú³ÉÐÂ°æ±¾
 generate_new_version() 
 {
-    if [ ! $# -eq 1 ]; then 
-		echo "please set version number"
-		exit 1
-	fi
     copy_src_to_compile
     generate_rebar_config
-    generate_reltool_config $1
+    generate_reltool_config $app_version
     cd "$root_dir/compile"
     rebar compile
 	rebar generate
     compile_post_clean
+	
+	# Éú³ÉÏÂÒ»¸ö°æ±¾ºÅ
+	local next_app_version=$(echo "$app_version+$step_size"|bc)
+	echo $next_app_version > $root_dir/tool/version.txt
 }
 
-#ç”Ÿæˆåœæœæ›´æ–°ç‰ˆæœ¬
-generate_simplify_release() 
-{
-    if [ ! $# -eq 1 ]; then 
-		echo "please set version number"
-		exit 1
-	fi
-    local app_vsn=$1
-    generate_new_version $1
-    cp -rf $root_dir/release/$app_name"_$app_vsn" $root_dir/simplify_release/$app_name"_$app_vsn"
-    cd $root_dir/simplify_release/$app_name"_$app_vsn"
-    rm -rf config game_log log record  tool
-}
-
-#ç”Ÿæˆçƒ­æ›´æ–°ç‰ˆæœ¬
+#Éú³ÉÈÈ¸üÐÂ°æ±¾
 generate_hot_release() 
 {
     if [ ! $# -eq 2 ]; then 
@@ -232,14 +239,21 @@ make_release_share()
     mv $root_dir/release/$lc_tar_project/$lc_tar_project.tar.gz $share_dir/release/$lc_tar_project.tar.gz  
 }
 
-make_simplify_release_share() 
+#Éú³ÉÍ£·þ¸üÐÂ°æ±¾
+generate_simplify_release() 
 {
-    local lc_tar_project=$1
-    rm -rf $share_dir/simplify_release/$lc_tar_project.tar.gz 
-    rm -rf $root_dir/simplify_release/$lc_tar_project.tar.gz
-    cd $root_dir/simplify_release/$lc_tar_project 
-    tar -zcvf $lc_tar_project.tar.gz * > /dev/null
-    mv $root_dir/simplify_release/$lc_tar_project/$lc_tar_project.tar.gz $share_dir/simplify_release/$lc_tar_project.tar.gz  
+	local lc_app_version=`cat $root_dir/tool/version.txt `
+	local lc_pre_version=$(echo "$lc_app_version-$step_size"|bc)
+	local lc_tar_project=$app_name"_$lc_pre_version"
+	rm -rf $share_dir/simplify_release/first_blood.tar.gz $root_dir/simplify_release/first_blood.tar.gz $root_dir/simplify_release/first_blood  $root_dir/simplify_release/$lc_tar_project
+
+    cp -rf $root_dir/release/$lc_tar_project $root_dir/simplify_release/$lc_tar_project
+	cd $root_dir/simplify_release
+	mv $lc_tar_project first_blood
+	tar -zcvf first_blood.tar.gz first_blood > /dev/null
+	echo 'make tar ok !!!'
+	mv first_blood.tar.gz $share_dir/simplify_release/first_blood.tar.gz
+	echo 'generate_simplify_release ok !!!'
 }
 
 make_hot_release_share() 
@@ -248,11 +262,71 @@ make_hot_release_share()
     mv $root_dir/hot_release/$lc_tar_project $share_dir/hot_release/$lc_tar_project
 }
 
+create_lvup_package() 
+{
+    if [ ! $# -eq 4 ]; then 
+        echo "please input the right arguments"
+        exit 1
+    fi
+    local lc_run_file_list=$1
+    local lc_run_dir_list=$2
+    local lc_new_file_list=$3
+    local lc_new_dir_list=$4
+    #Éú³É¶Ô±ÈÎÄ¼þ
+    awk -F ' ' ' BEGIN { i = 0}
+    { 
+        if(NR==FNR) { 
+            a[$1]=$2 ;
+            b[i++]=$1;
+        } else if(a[$1]==$2){ 
+            a[$1] = "";
+        }else {
+            print "+f "$1;
+        }  
+    } END { for(k=0;k<i;++k){ if(a[b[k]]!="") {print "-f "b[k]}}}' $lc_run_file_list  $lc_new_file_list  >lvup_file_result.txt
+    
+    awk  ' BEGIN {i=0}
+    { 
+        if(NR==FNR) { 
+            a[$1]=$1 ;
+            b[i++]=$1;
+        } else if(a[$1]==""){ 
+            print "+d "$1;
+        }else {
+            a[$1]=0 ;
+        }  
+    } END { for(k=0;k<i; ++k){ if(a[b[k]]!=0) {print "-d "b[k]}}} ' $lc_run_dir_list  $lc_new_dir_list >>lvup_file_result.txt
+    
+    #Éú³ÉÍ£·þÉý¼¶°üÉý¼¶°ü  
+}
+
+make_resource() 
+{
+	cd "$root_dir/src"
+	svn update resource 
+	tar -zcf resource.tar.gz resource/ 
+	mv -f resource.tar.gz ../resource
+	
+}
+
+info() 
+{
+	echo '[svn|update|release|upgrade|resource|show_version_list]'
+}
+
 main() 
 {
     case "$1" in 
 		svn) 
 			update_src;;
+		update)
+            generate_simplify_release ;;
+        release)
+            generate_new_version ;;
+		upgrade)
+            make_hot_release_share $2;;
+		resource)
+            make_resource ;;
         generate_project_structure)
             generate_project_structure;;
 		clean_compile) 
@@ -263,10 +337,6 @@ main()
             generate_src_dir;;
         generate_hot_release)
             generate_hot_release $2 $3;;
-        generate_simplify_release)
-            generate_simplify_release $2;;
-        generate_new_version)
-            generate_new_version $2;;
         copy_src_to_compile)
             copy_src_to_compile;;
 		generate_release_dir) 
@@ -279,10 +349,10 @@ main()
             make_release_share $2 $3;;
         generate_reltool_config)
             generate_reltool_config $2;;
-        make_simplify_release_share)
-            make_simplify_release_share $2;;
-        make_hot_release_share)
-            make_hot_release_share $2;;
+		help)
+            info $2;;
+		*)
+            info $2;;
 	esac
 } 
 

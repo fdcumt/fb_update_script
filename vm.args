@@ -2,3 +2,6 @@
 -name first_app@127.0.0.1 
 -setcookie first_app
 -detached
++K true
++P 5000
+-mnesia dir '"./zmnesia"' 

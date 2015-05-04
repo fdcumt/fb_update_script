@@ -27,5 +27,8 @@ execute_operate({AtomNode, [PackageName, App_vsn]}, upgrade) ->
     io:format("install upgrade ok!!!~n");
 execute_operate({AtomNode, []}, stop_server) ->
     Ret = rpc:call(AtomNode, kick_manager, stop_server, []),
+    io:format("stop server ret is ~p~n", [Ret]);
+execute_operate({AtomNode, []}, reload_zdb) ->
+    Ret = rpc:call(AtomNode, zdb_manager, reload_all_zdb, []),
     io:format("stop server ret is ~p~n", [Ret]).
     
